@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <map>
 #include "../Cpu/Cpu.h"
 
 /**
@@ -27,7 +28,7 @@ private:
      * 
      * @param lines Vector of program file lines
      * @param startLine Line index to start parsing from
-     * @return std::pair<std::vector<long>, size_t> Parsed data and next line index
+     * @return std::pair<std::map<size_t, long>, size_t> Parsed data and next line index
      */
     std::pair<std::vector<long>, size_t> parseDataSection(
         const std::vector<std::string>& lines, 
@@ -38,9 +39,9 @@ private:
      *
      * @param lines Vector of program file lines
      * @param startLine Line index to start parsing from
-     * @return std::vector<Instruction> Parsed instructions
+     * @return std::map<size_t, Instruction> Parsed instructions
      */
-    std::vector<Instruction> parseInstructionSection(
+    std::map<long, Instruction> parseInstructionSection(
         const std::vector<std::string>& lines, 
         size_t startLine);
 

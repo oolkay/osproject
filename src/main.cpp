@@ -68,7 +68,7 @@ Instruction convertToCpuInstruction(const ParsedInstruction& parsed) {
 void printMemoryContents(const std::vector<long>& memory) {
     std::cerr << "Memory Contents:" << std::endl;
     for (size_t i = 0; i < memory.size(); ++i) {
-        if (memory[i] != 0) {  // Only print non-zero locations to reduce output size
+        if (memory[i] != 0 || i < 20) {  // Only print non-zero locations to reduce output size
             std::cerr << "Memory[" << i << "] = " << memory[i] << std::endl;
         }
     }
@@ -76,11 +76,12 @@ void printMemoryContents(const std::vector<long>& memory) {
 }
 
 // Function to print current instruction info
-void printInstructionInfo(const CPU& cpu, const std::unordered_map<long, std::string>& addressToInstructionStr, long currentPC) {
+void printInstructionInfo(const CPU& cpu, long currentPC) {
     std::cerr << "----------------------------------------" << std::endl;
     std::cerr << "Current PC: " << currentPC << std::endl;
     std::cerr << "Current Instruction: ";
     
+    auto& addressToInstructionStr = cpu.getInstructions();
     auto it = addressToInstructionStr.find(currentPC);
     if (it != addressToInstructionStr.end()) {
         std::cerr << it->second;
@@ -94,34 +95,13 @@ void printInstructionInfo(const CPU& cpu, const std::unordered_map<long, std::st
     std::cerr << "----------------------------------------" << std::endl;
 }
 
-std::unordered_map<long, std::string> loadInstructionMap(const std::string& filename) {
-    std::unordered_map<long, std::string> addrMap;
-    std::ifstream file(filename);
-    if (!file.is_open())
-        throw std::runtime_error("Could not open program file: " + filename);
-    std::string line;
-    long address = 0;
-    bool inSection = false;
-    while (std::getline(file, line)) {
-        // Remove comments
-        size_t pos = line.find('#');
-        if (pos != std::string::npos) line = line.substr(0, pos);
-        line.erase(0, line.find_first_not_of(" \t\r\n"));
-        line.erase(line.find_last_not_of(" \t\r\n") + 1);
-        if (line.empty()) continue;
-        if (line.find("Begin Instruction Section") != std::string::npos) { inSection = true; continue; }
-        if (line.find("End Instruction Section") != std::string::npos) { inSection = false; continue; }
-        if (inSection) { addrMap[address++] = line; }
-    }
-    return addrMap;
-}
 
-void executeProgram(CPU& cpu, const std::unordered_map<long, std::string>& addrMap, int debugMode) {
+void executeProgram(CPU& cpu, int debugMode) {
     int steps = 0;
     while (!cpu.isHalted()) {
         long currentPC = cpu.getMemory()[0];
         if (debugMode > 0)
-            printInstructionInfo(cpu, addrMap, currentPC);
+            printInstructionInfo(cpu, currentPC);
         try {
             cpu.execute();
             steps++;
@@ -162,10 +142,9 @@ int main(int argc, char* argv[]) {
         // - 1: Stack Pointer (SP)
         // - 2: System call result register
         // - 3: Instruction count
-        CPU cpu(11000, printCallback, yieldCallback);
+        CPU cpu(256, printCallback, yieldCallback);
         ProgramLoader loader;
         
-        auto addrMap = loadInstructionMap(argv[1]);
         std::cout << "Loading program from " << argv[1] << "..." << std::endl;
         loader.loadProgram(argv[1], cpu);
         
@@ -179,7 +158,7 @@ int main(int argc, char* argv[]) {
         }
         
         std::cout << "Executing program..." << std::endl;
-        executeProgram(cpu, addrMap, debugMode);
+        executeProgram(cpu, debugMode);
         return 0;
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

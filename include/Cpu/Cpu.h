@@ -10,7 +10,9 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <iostream>
 #include <unordered_map>
+#include <map>
 #include <stdexcept>
 
 /**
@@ -35,6 +37,15 @@ public:
 struct Instruction {
     std::string opcode;
     std::vector<long> operands;
+
+    //<< operator overload
+    friend std::ostream& operator<<(std::ostream& os, const Instruction& instr) {
+        os << instr.opcode;
+        for (const auto& operand : instr.operands) {
+            os << " " << operand;
+        }
+        return os;
+    }
 };
 
 /**
@@ -122,7 +133,7 @@ public:
      * 
      * @param newInstructions Vector of instructions to load
      */
-    void loadInstructions(const std::vector<Instruction>& newInstructions);
+    void loadInstructions(const std::map<long, Instruction>& newInstructions);
     
     /**
      * @brief Execute the next instruction
@@ -157,6 +168,15 @@ public:
      * @return Parsed instruction
      */
     static Instruction parseInstruction(const std::string& instructionStr);
+
+    /**
+     * @brief Get instructions
+     * 
+     * @return Reference to the instructions map
+     */
+    const std::unordered_map<long, Instruction>& getInstructions() const {
+        return instructions;
+    }
 };
 
 #endif // CPU_H

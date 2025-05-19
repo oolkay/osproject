@@ -89,7 +89,7 @@ void CPU::executeCall(const std::vector<long>& operands) {
     checkAddressAccess(sp);
     
     memory[sp] = getPC() + 1;  // Store PC + 1 as the return address
-    
+
     // Jump to subroutine
     setPC(jumpAddr);
 }

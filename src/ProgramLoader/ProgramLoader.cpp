@@ -43,98 +43,78 @@ std::pair<std::vector<long>, size_t> ProgramLoader::parseDataSection(
             }
         }
     }
-    
     return {data, lineIndex};
 }
 
-std::vector<Instruction> ProgramLoader::parseInstructionSection(
-    const std::vector<std::string>& lines, 
-    size_t startLine) {
+#include <map>
+#include <sstream>
+#include <iostream>
+
+// Helper function to trim whitespace from both ends of a string.
+static std::string trim(const std::string &s) {
+    auto start = s.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos) return "";
+    auto end = s.find_last_not_of(" \t\r\n");
+    return s.substr(start, end - start + 1);
+}
+
+// Helper to remove comments and trim the result.
+static std::string cleanLine(const std::string &line) {
+    size_t pos = line.find('#');
+    return trim(pos != std::string::npos ? line.substr(0, pos) : line);
+}
+
+// Helper to extract an address and instruction string from a line.
+static std::pair<long, std::string> parseInstructionLine(const std::string &line) {
+    std::istringstream iss(line);
+    long address = -1;
+    iss >> address;
+    std::string instr;
+    std::getline(iss, instr);
+    return {address, trim(instr)};
+}
+
+// Helper to map SYSCALL type strings to a numeric code.
+static long getSyscallCode(const std::string &syscallType) {
+    if (syscallType == "PRN")
+        return 1;
+    else if (syscallType == "HLT")
+        return 2;
+    else if (syscallType == "YIELD")
+        return 3;
+    return 0;
+}
+
+std::map<long, Instruction> ProgramLoader::parseInstructionSection(
+    const std::vector<std::string>& lines, size_t startLine) {
     
-    std::vector<Instruction> instructions;
+    std::map<long, Instruction> instructions;
     InstructionParser parser;
-    size_t lineIndex = startLine;
-    long maxAddress = -1;  // Track highest instruction address
     
-    // Process each line until "End Instruction Section" is found
-    while (lineIndex < lines.size()) {
-        std::string line = lines[lineIndex++];
-        
-        // Skip empty lines
-        if (line.empty()) {
+    while (startLine < lines.size() && 
+           lines[startLine].find("End Instruction Section") == std::string::npos) {
+       
+        std::string line = cleanLine(lines[startLine++]);
+        if (line.empty())
             continue;
-        }
-        
-        // Check for end of section
-        if (line.find("End Instruction Section") != std::string::npos) {
-            break;
-        }
-        
-        // Remove comments
-        size_t commentPos = line.find('#');
-        if (commentPos != std::string::npos) {
-            line = line.substr(0, commentPos);
-        }
-        
-        // Skip if line is empty after removing comments
-        if (line.find_first_not_of(" \t\r\n") == std::string::npos) {
-            continue;
-        }
-        
-        // Parse instruction address and instruction
-        std::istringstream iss(line);
-        long address;
-        std::string instr;
-        
-        // Read the address
-        if (iss >> address) {
-            // Read the rest of the line as the instruction
-            std::getline(iss, instr);
-            
-            // Skip if instruction is empty
-            if (instr.find_first_not_of(" \t\r\n") == std::string::npos) {
-                continue;
+       
+        auto [address, instrStr] = parseInstructionLine(line);
+        try {
+            ParsedInstruction parsed = parser.parse(instrStr);
+            Instruction inst;
+            inst.opcode = parsed.opcode;
+            if (parsed.opcode == "SYSCALL") {
+                long syscallCode = getSyscallCode(parsed.syscallType);
+                std::vector<long> newOps = {syscallCode};
+                newOps.insert(newOps.end(), parsed.operands.begin(), parsed.operands.end());
+                inst.operands = newOps;
+            } else {
+                inst.operands = parsed.operands;
             }
-            
-            // Update max address
-            if (address > maxAddress) {
-                maxAddress = address;
-                // Make sure we have space in the vector
-                if (static_cast<size_t>(address) >= instructions.size()) {
-                    instructions.resize(address + 1);
-                }
-            }
-            
-            // Parse the instruction
-            try {
-                ParsedInstruction parsed = parser.parse(instr);
-                
-                // Convert to CPU Instruction
-                instructions[address].opcode = parsed.opcode;
-                    
-                    // Handle SYSCALL instructions with syscall type
-                if (parsed.opcode == "SYSCALL") {
-                    // Map syscall type to a numeric code
-                    long syscallCode = 0;
-                    if (parsed.syscallType == "PRN") syscallCode = 1;
-                    else if (parsed.syscallType == "HLT") syscallCode = 2;
-                    else if (parsed.syscallType == "YIELD") syscallCode = 3;
-                    
-                    // Add syscall code as first operand
-                    std::vector<long> newOperands = {syscallCode};
-                    
-                    // Add remaining operands
-                    newOperands.insert(newOperands.end(), parsed.operands.begin(),
-                                      parsed.operands.end());
-                    
-                    instructions[address].operands = newOperands;
-                } else {
-                    instructions[address].operands = parsed.operands;
-                }
-            } catch (const std::exception& e) {
-                std::cerr << "Warning: Skipping invalid instruction at address " << address 
-                          << ": " << instr << " - " << e.what() << std::endl;
-            }
+            instructions[address] = inst;
+        } catch (const std::exception &e) {
+            std::cerr << "Warning: Skipping invalid instruction at address " 
+                      << address << ": " << instrStr << " - " << e.what() << std::endl;
         }
     }
     
@@ -154,7 +134,7 @@ void ProgramLoader::loadProgram(const std::string& filename, CPU& cpu) {
     // Parse file
     size_t lineIndex = 0;
     std::vector<long> data;
-    std::vector<Instruction> instructions;
+    std::map<long, Instruction> instructions;
     
     while (lineIndex < lines.size()) {
         line = lines[lineIndex++];

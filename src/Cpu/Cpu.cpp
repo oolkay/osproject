@@ -33,11 +33,9 @@ void CPU::loadMemory(size_t address, const std::vector<long>& data) {
     std::copy(data.begin(), data.end(), memory.begin() + address);
 }
 
-void CPU::loadInstructions(const std::vector<Instruction>& newInstructions) {
+void CPU::loadInstructions(const std::map<long, Instruction>& newInstructions) {
     instructions.clear();
-    for (size_t i = 0; i < newInstructions.size(); i++) {
-        instructions[i] = newInstructions[i];
-    }
+    instructions.insert(newInstructions.begin(), newInstructions.end());
 }
 
 void CPU::execute() {
