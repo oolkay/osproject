@@ -1,0 +1,211 @@
+# Doğrusal Arama Programı
+
+Begin Data Section
+
+# Aranacak Sayı Dizisi (10 elemanlı)
+# Dizi bellek adresi 100'den başlar
+100 25
+101 12
+102 37
+103 8
+104 56
+105 42
+106 3
+107 91
+108 19
+109 50
+
+# Dizinin Boyutu (N)
+110 10
+
+# Aranacak Anahtar Değer
+111 42 # Bu örnekte 42 aranıyor
+
+# Sonucun yazılacağı bellek adresi (Bulunan indeks veya -1 eğer bulunamazsa)
+112 0
+
+# Geçici Değişkenler
+113 0  # Döngü sayacı (i)
+114 0  # Mevcut dizi elemanının değeri
+115 0  # Geçici değer (dizi boyutu - i karşılaştırması için)
+116 0  # Geçici adres (dizi elemanı adresi hesaplamak için)
+117 0  # Geçici değer (element - key karşılaştırması için)
+118 0  # Geçici değer (key - element karşılaştırması için)
+119 0  # Geçici değer
+
+End Data Section
+
+Begin Instruction Section
+
+# Program Başlangıcı
+
+# Döngü Sayacını Başlat (i = 0)
+0 SET 0 113
+
+# Döngü Kontrolü
+1 CPY 113 115 # i değerini geçici olarak 115'e kopyala
+2 SUBI 110 115 # 110'daki (N) değeri 115'teki (i) değerden çıkar, sonuç 115'te. (N - i)
+3 JIF 115 20  # Eğer (N - i) <= 0 ise (yani i >= N), döngü bitti, instruction 20'ye atla (Bulunamadı kısmına)
+
+# Döngü Gövdesi Başlangıcı
+# Mevcut dizi elemanının adresini hesapla (Dizi Başlangıcı + i)
+4 SET 100 116   # 116'ya dizi başlangıç adresi 100'ü koy
+5 ADDI 113 116  # 116'ya (dizi başlangıcı) 113'teki (i) değeri ekle. Şimdi 116'da mevcut elemanın bellek adresi var.
+6 CPYI 116 114  # 116'daki adresin içeriğini (mevcuttaki elemanı) 114'e kopyala.
+
+# Anahtar ile karşılaştır (if element == key)
+8 CPY 114 117  # Mevcut eleman değerini (114) geçici 117'ye kopyala
+9 SUBI 111 117 # 117'den 111'deki (anahtar) değeri çıkar. Sonuç 117'de (element - key)
+10 JIF 117 13 # Eğer (element - key) <= 0 ise (yani element <= key). Eşitlik kontrolü için başka bir kontrol gerekir. GTU-C312'de sadece JIF var. Eşitlik kontrolü için (element - key) ve (key - element) değerlerinin ikisinin de <= 0 olması gerekir.
+
+# Eşitlik Kontrolü için Ek Adımlar:
+# Kontrol 1: element <= key (Yukarıdaki JIF 10'da yapıldı)
+# Eğer JIF 10 atlamadıysa (element > key), o zaman eşit değildir, bir sonraki iterasyona geç.
+11 ADD 113 1 # i'yi artır
+12 JIF 113 1 # Koşulsuz atlama (döngü başına dön) - Hatalı. Doğrusu döngü başına dönmek için JIF kullanmak yerine, kontrol sonrası direkt döngü başına atlayan bir yapı kurmak.
+
+# Eşitlik Kontrolü ve Döngü İlerlemesi İçin Yeniden Düzenlenmiş Mantık:
+# Döngü Başına Dönüş için JIF Kullanımı Mantıksız, Basit Sürüm:
+# Döngü Başlangıcı (Instruction 1)
+# ... karşılaştırma ...
+# Eğer Eşit DEĞİLSE, i'yi artır ve döngü başına atla
+# Eğer Eşit İSE, Bulundu kısmına atla
+
+# Yeniden Düzenlenmiş Program Mantığı:
+
+Begin Instruction Section
+
+# Program Başlangıcı
+
+# Döngü Sayacını Başlat (i = 0)
+0 SET 0 113
+
+# Döngü Etiketi (Doğrusal Arama Döngüsü)
+1 NOP # No Operation - Döngü başlangıcını işaret etmek için
+
+# Mevcut dizi elemanının adresini hesapla (Dizi Başlangıcı + i)
+2 SET 100 116   # 116'ya dizi başlangıç adresi 100'ü koy
+3 ADDI 113 116  # 116'ya (dizi başlangıcı) 113'teki (i) değeri ekle. Şimdi 116'da mevcut elemanın bellek adresi var.
+4 CPYI 116 114  # 116'daki adresin içeriğini (mevcut dizi elemanı) 114'e kopyala.
+
+# Anahtar ile karşılaştır (element == key)
+5 CPY 114 117  # Mevcut eleman değerini (114) geçici 117'ye kopyala
+6 SUBI 111 117 # 117'den 111'deki (anahtar) değeri çıkar. Sonuç 117'de (element - key)
+
+# Eğer element == key ise, (element - key) 0 olacaktır. JIF 0'dan küçük veya eşitse atlar.
+# Sadece eşitliği kontrol etmek için ek bir adım lazım: (key - element) de <= 0 olmalı.
+7 CPY 111 118 # Anahtar değerini (111) geçici 118'e kopyala
+8 SUBI 114 118 # 118'den 114'teki (element) değeri çıkar. Sonuç 118'de (key - element)
+
+# Eğer (element - key) <= 0 VE (key - element) <= 0 ise, elemanlar eşittir.
+# JIF 117 11  # Eğer (element - key) <= 0 ise instruction 11'e atla (ikinci kontrole)
+# JIF 118 13  # Eğer (key - element) <= 0 ise instruction 13'e atla (Bulundu kısmına). Bu JIF'e sadece JIF 117 11 atlamazsa gelinir, yani (element-key) > 0 ise. Bu mantık eşitlik kontrolü için uygun değil.
+
+# Daha basit bir eşitlik kontrolü yaklaşımı (iki JIF ile):
+# Eğer element < key ise, (element - key) < 0. JIF 117 koşulu sağlanır. Bir sonraki adıma atla.
+# Eğer element > key ise, (element - key) > 0. JIF 117 koşulu sağlanmaz. Bir sonraki adıma geçilir.
+# Eğer element == key ise, (element - key) == 0. JIF 117 koşulu sağlanır. Bir sonraki adıma atla.
+
+# Kontrol 1: element < key mi? (element - key) < 0
+5 CPY 114 117
+6 SUBI 111 117 # 117 = element - key
+7 JIF 117 12  # Eğer element < key ise, atla (Eşit veya büyükse devam et)
+
+# Kontrol 2: element == key mi? (element - key) == 0
+8 CPY 117 119 # (element - key) değerini 119'a kopyala
+9 ADD 119 1 # 119'a 1 ekle. Eğer element-key 0 ise, 119 şimdi 1 olur. Eğer <0 ise hala <=0 olur. Eğer >0 ise hala >0 olur. Bu da eşitliği tek başına kontrol etmek için yetersiz.
+
+# GTU-C312'nin sınırlı instruction seti ile tam eşitlik kontrolü biraz karmaşık olabilir.
+# Alternatif Yaklaşım: Doğrudan Eşitlik Kontrolü Olmadığı İçin Farkı Sıfırla Karşılaştırma.
+# Eğer (element - key) == 0 ise elemanlar eşittir. Bunu kontrol etmek için (element - key) sonucunun 0'dan küçük veya eşit OLMAMASI durumunu kullanabiliriz.
+# Yani, JIF (element - key) > 0 ise atlama yapmaz. Eğer 0 veya negatif ise atlama yapar.
+# İki sayının eşit olması için farklarının 0 olması gerekir.
+# JIF komutu <= 0 için atlama yapar.
+# Eğer (element - key) > 0 ise (element > key), JIF atlamaz.
+# Eğer (element - key) <= 0 ise (element <= key), JIF atlar.
+# Eşitlik durumu (element == key) JIF için atlama koşulunu sağlar (0 <= 0).
+# Bu durumda, JIF'i kullanarak eşitliği KONTROL EDEMEYİZ, sadece "küçük veya eşit" durumunu kontrol edebiliriz.
+
+# En iyi yaklaşım: JIF'i "küçük veya eşit değil" durumunu kontrol etmek için kullanmak.
+# element == key ise, element <= key ve key <= element'tir.
+# Önce element <= key kontrolü:
+5 CPY 114 117  # element değeri
+6 SUBI 111 117 # 117 = element - key
+7 JIF 117 10  # Eğer element <= key ise instruction 10'a atla
+
+# Eğer instruction 7'den buraya geldiysek, element > key demektir. Eşitlik söz konusu değil. Döngüyü ilerlet.
+8 ADD 113 1  # i'yi artır
+9 JIF 1 # Döngü başına atla
+
+# Eğer instruction 7'den instruction 10'a atladıysak, element <= key demektir. Şimdi key <= element mi diye bakalım.
+10 CPY 111 118  # key değeri
+11 SUBI 114 118 # 118 = key - element
+12 JIF 118 15 # Eğer key <= element ise instruction 15'e atla (Bulundu kısmına).
+
+# Eğer instruction 12'den buraya geldiysek (instruction 10'dan atlamış ama 12'den atlamamışsak), element <= key ama key > element demektir. Bu da element < key anlamına gelir. Eşitlik söz konusu değil. Döngüyü ilerlet.
+13 ADD 113 1  # i'yi artır
+14 JIF 1 # Döngü başına atla
+
+
+# Bulundu Kısmı
+# Eğer instruction 12'den buraya atladıysak, element <= key VE key <= element demektir, yani element == key.
+15 CPY 113 112 # Bulunan indeksi (i değerini) sonuç adresine (112) kopyala
+16 SYSCALL PRN 112 # Sonucu yazdır (bulunan indeks)
+17 HLT # Programı sonlandır
+
+# Bulunamadı Kısmı (Döngü bittiğinde buraya gelinir - i >= N olduğunda)
+# Döngü sonu kontrolü JIF 115 14 (Instruction 3) yerine başka bir JIF ile yapılmalıydı.
+# Döngü sonu kontrolünü Instruction 1'den önce yapalım.
+# Yeniden Düzenlenmiş Program Mantığı (Döngü Kontrolü Başta):
+
+Begin Instruction Section
+
+# Program Başlangıcı
+
+# Döngü Sayacını Başlat (i = 0)
+0 SET 0 113
+
+# Döngü Kontrolü
+1 CPY 113 115 # i değerini geçici olarak 115'e kopyala
+2 SUBI 110 115 # 110'daki (N) değeri 115'teki (i) değerden çıkar, sonuç 115'te. (N - i)
+3 JIF 115 20  # Eğer (N - i) <= 0 ise (yani i >= N), döngü bitti, instruction 20'ye atla (Bulunamadı kısmına)
+
+# Döngü Gövdesi Başlangıcı
+# Mevcut dizi elemanının adresini hesapla (Dizi Başlangıcı + i)
+4 SET 100 116   # 116'ya dizi başlangıç adresi 100'ü koy
+5 ADDI 113 116  # 116'ya (dizi başlangıcı) 113'teki (i) değeri ekle. Şimdi 116'da mevcut elemanın bellek adresi var.
+6 CPYI 116 114  # 116'daki adresin içeriğini (mevcuttaki elemanı) 114'e kopyala.
+
+# Anahtar ile karşılaştır (element == key)
+# Kontrol 1: element < key mi? (element - key) < 0
+7 CPY 114 117  # element değeri
+8 SUBI 111 117 # 117 = element - key
+9 JIF 117 13  # Eğer element <= key ise instruction 13'e atla (ikinci kontrole)
+
+# Eğer instruction 9'dan buraya geldiysek, element > key demektir. Eşitlik söz konusu değil. Döngüyü ilerlet.
+10 ADD 113 1  # i'yi artır
+11 SET 1 0 # Döngü başına atla (Kontrol adımına dön)
+
+# Eğer instruction 9'dan instruction 13'e atladıysak, element <= key demektir. Şimdi key <= element mi diye bakalım.
+13 CPY 111 118  # key değeri
+14 SUBI 114 118 # 118 = key - element
+15 JIF 118 18 # Eğer key <= element ise instruction 18'e atla (Bulundu kısmına).
+
+# Eğer instruction 15'ten buraya geldiysek, element <= key ama key > element demektir. Bu da element < key anlamına gelir. 
+16 ADD 113 1  # i'yi artır
+17 SET 1 0 # Döngü başına atla (Kontrol adımına dön)
+
+# Bulundu Kısmı
+# Eğer instruction 15'ten buraya atladıysak, element <= key VE key <= element demektir, yani element == key.
+18 CPY 113 112 # Bulunan indeksi (i değerini) sonuç adresine (112) kopyala
+19 JIF 0 23 # Sonucu yazdırma kısmına atla
+
+# Bulunamadı Kısmı 
+20 SET -1 112
+21 JIF 0 23 # Sonucu yazdırma kısmına atla
+
+# Sonucu yazdır ve programı sonlandır
+23 SYSCALL PRN 112 # Sonucu yazdır
+24 HLT # Programı sonlandır
+
+End Instruction Section

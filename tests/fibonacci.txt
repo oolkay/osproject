@@ -1,0 +1,34 @@
+# Fibonacci Sequence Calculator
+
+Begin Data Section
+# System registers
+0 0   # PC
+1 100 # SP
+2 0   # Syscall result
+3 0   # Instruction count
+
+# Variables
+50 0  # First number in sequence (0)
+51 1  # Second number in sequence (1)
+52 10 # Count of numbers to generate
+53 0  # Temporary variable for swapping
+End Data Section
+
+Begin Instruction Section
+# Initialize and print first number
+0 SYSCALL PRN 50  # Print first number (0)
+1 ADD 52 -1       # Decrement counter
+
+# Loop start
+2 SYSCALL PRN 51  # Print current number
+3 ADD 52 -1       # Decrement counter
+4 JIF 52 24        # If counter <= 0, end program
+5 SET 20 0
+
+# Calculate next number
+20 CPY 51 53       # temp = current
+21 ADDI 50 51      # current = current + previous
+22 CPY 53 50       # previous = temp
+23 JIF 52 2        # If counter > 0, continue loop
+24 HLT             # Halt program
+End Instruction Section

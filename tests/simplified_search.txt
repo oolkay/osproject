@@ -1,0 +1,83 @@
+# Linear Search Program
+
+Begin Data Section
+# System registers
+0 0   # PC - MUST start at 0
+1 100 # SP
+2 0   # Syscall result
+3 0   # Instruction count
+
+# Array to search (10 elements)
+100 25
+101 12
+102 37
+103 8
+104 56
+105 42
+106 3
+107 91
+108 19
+109 50
+
+# Array size
+110 10
+
+# Key to search for
+111 42  # We are looking for the value 42 which is at index 5
+
+# Result address (will contain found index or -1)
+112 0
+
+# Temporary variables
+113 0  # Loop counter (i)
+114 0  # Current array element value
+115 0  # Temp for comparison (N-i)
+116 0  # Temp for array element address
+117 0  # Temp for element-key comparison
+118 0  # Temp for key-element comparison
+End Data Section
+
+Begin Instruction Section
+# Initialize counter i=0
+0 SET 0 113
+
+# Loop check - if i>=N, go to "not found"
+1 CPY 113 115
+2 SUBI 110 115
+3 JIF 115 20
+
+# Get array element at index i
+4 SET 100 116
+5 ADDI 113 116
+6 CPYI 116 114
+
+# Compare element with key (check if element <= key)
+7 CPY 114 117
+8 SUBI 111 117
+9 JIF 117 13
+
+# If element > key, increment i and loop
+10 ADD 113 1
+11 SET 1 0  # Set PC to instruction 1
+
+# Check if key <= element (for equality)
+13 CPY 111 118
+14 SUBI 114 118
+15 JIF 118 18
+
+# If element < key, increment i and loop
+16 ADD 113 1
+17 SET 1 0  # Set PC to instruction 1
+
+# Found key at index i
+18 CPY 113 112
+19 JIF 0 23
+
+# Not found
+20 SET -1 112
+21 JIF 0 23
+
+# Print result and halt
+23 SYSCALL PRN 112
+24 HLT
+End Instruction Section

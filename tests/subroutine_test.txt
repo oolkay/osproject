@@ -1,0 +1,40 @@
+# Subroutine Call Test
+
+Begin Data Section
+# System registers
+0 0   # PC
+1 100 # SP - Stack starts at address 100
+2 0   # Syscall result
+3 0   # Instruction count
+
+# Variables
+50 5   # First value
+51 10  # Second value
+52 0   # Result of addition
+53 0   # Result of multiplication
+54 0   # Counter for multiplication loop
+End Data Section
+
+Begin Instruction Section
+# Main program
+0 CALL 10       # Call addition subroutine
+1 SYSCALL PRN 52  # Print addition result
+2 CALL 20       # Call multiplication subroutine
+3 SYSCALL PRN 53  # Print multiplication result
+4 HLT           # Halt program
+
+# Addition subroutine (starts at instruction 10)
+10 CPY 50 52    # Copy first value to result
+11 ADDI 51 52   # Add second value to result
+12 RET          # Return to caller
+
+# Multiplication subroutine (starts at instruction 20)
+# Implements multiplication as repeated addition
+20 SET 0 53     # Initialize result to 0
+21 CPY 51 54    # Copy second value to counter
+22 JIF 54 26    # If counter <= 0, return
+23 ADDI 50 53   # Add first value to result
+24 ADD 54 -1    # Decrement counter
+25 SET 22 0     # Jump back to loop check
+26 RET          # Return to caller
+End Instruction Section

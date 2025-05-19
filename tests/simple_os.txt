@@ -1,0 +1,36 @@
+# Basit İşletim Sistemi Test
+
+Begin Data Section
+# System registers
+0 0       # PC - Program Counter
+1 100     # SP - Stack Pointer
+2 0       # Syscall result
+3 0       # Instruction count
+
+# Thread 1 variables (user space)
+1000 0    # Counter
+
+# Thread Table (OS kernel space)
+500 1     # Thread 1 ID
+501 0     # Thread 1 state (0=ready, 1=running, 2=blocked)
+502 1000  # Thread 1 PC
+503 1100  # Thread 1 SP
+End Data Section
+
+Begin Instruction Section
+# OS initialization
+0 SET 1000 502  # Set Thread 1 PC to 1000
+1 SET 1100 503  # Set Thread 1 SP to 1100
+2 SET 0 1000    # Initialize counter to 0
+3 SET 1 501     # Set thread state to running
+
+# Go to user mode and start thread
+4 CPY 502 0     # Set system PC to thread PC location
+5 CPY 503 1     # Copy thread SP to system SP
+6 USER          # Switch to user mode
+
+# Thread 1 code (address 1000)
+1000 ADD 1000 1    # Increment counter
+1001 SYSCALL PRN 1000  # Print counter value
+1002 SET 1000 0     # Jump back to start of thread code
+End Instruction Section

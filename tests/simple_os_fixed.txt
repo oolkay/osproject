@@ -1,0 +1,148 @@
+# Basit İşletim Sistemi Test
+
+Begin Data Section
+# System registers
+0 0       # PC - Program Counter
+1 100     # SP - Stack Pointer
+2 0       # Syscall result
+3 0       # Total Instruction count
+4 0       # Current Thread ID
+5 0       # Kernel Mode Flag (0=User, 1=Kernel)
+6 0       # Current Thread User Instruction Count
+
+# Thread 1 variables (user space)
+1000 0    # Counter for Thread 1
+
+# Thread 2 variables (user space)
+1200 0    # Counter for Thread 2
+
+1500 -1     #unconditional jump
+
+# Thread Table (OS kernel space)
+# OS Thread (Thread 0)
+500 0     # Thread 0 ID (OS)
+501 1     # Thread 0 state (0=ready, 1=running, 2=blocked)
+502 0     # Thread 0 PC
+503 100   # Thread 0 SP
+512 0     # Thread 0 User Instruction Count
+
+# User Thread (Thread 1)
+504 1     # Thread 1 ID
+505 0     # Thread 1 state (0=ready, 1=running, 2=blocked)
+506 1000  # Thread 1 PC
+507 1100  # Thread 1 SP
+513 0     # Thread 1 User Instruction Count
+
+# User Thread (Thread 2)
+508 2     # Thread 2 ID
+509 0     # Thread 2 state (0=ready, 1=running, 2=blocked)
+510 1200  # Thread 2 PC
+511 1300  # Thread 2 SP
+514 0     # Thread 2 User Instruction Count
+
+# Scheduler configuration
+520 100   # Time slice duration (instruction count)
+521 0     # Time slice counter
+522 4     # Kernel Overhead (estimated instructions)
+End Data Section
+
+Begin Instruction Section
+# OS initialization
+0 SET 1000 506   # Set Thread 1 PC to 1000
+1 SET 1100 507   # Set Thread 1 SP to 1100
+2 SET 0 1000     # Initialize counter 1 to 0
+3 SET 0 505      # Set thread 1 state to ready
+4 SET 0 513      # Initialize thread 1 user instruction count
+
+5 SET 1200 510   # Set Thread 2 PC to 1200
+6 SET 1300 511   # Set Thread 2 SP to 1300
+7 SET 0 1200     # Initialize counter 2 to 0
+8 SET 0 509      # Set thread 2 state to ready
+9 SET 0 514      # Initialize thread 2 user instruction count
+
+10 SET 1 4       # Set current thread to Thread 1
+11 SET 1 505     # Set Thread 1 state to running
+12 SET 0 521     # Reset time slice counter
+13 SET 0 5       # Set User Mode
+14 SET 20 0      # Jump to scheduler implementation
+
+# Scheduler implementation (returns to here after a context switch or syscall)
+20 ADD 521 1     # Increment time slice counter
+21 CPY 520 100   # Load time slice duration to register 100
+22 CPY 521 101   # Load time slice counter to register 101
+23 SUBI 100 101  # Subtract current counter from duration
+24 JIF 101 70    # If time is up, jump to new context switch start
+25 SET 40 0      # If time is not up, jump to start thread
+
+# Go to user mode and start current thread
+40 CPY 4 100    # Get current thread ID
+41 ADDI 100 100   # Multiply by 4 to get offset
+42 ADDI 100 100   # Multiply by 4 to get offset
+43 ADD 100 500  # Add base address to get thread table entry
+44 ADD 100 3     # Add 2 to get PC address
+45 CPYI 1 100    # Copy thread SP to system SP
+46 ADD 100 -1     # Add 1 to get SP address
+47 CPYI 100 0
+
+
+
+# Context switch routine (renumbered from 30..51 to 70..91)
+70 CPYI 4 100    # Get current thread ID
+71 ADD 100 100   # Multiply by 4 to get offset
+72 ADD 100 100   # Multiply by 4 to get offset
+73 ADD 100 100   # Multiply by 4 to get offset
+74 ADDI 504 100  # Add base address to get thread table entry
+75 ADD 100 1     # Add 1 to get state field
+76 SET 0 100     # Set current thread to ready state
+77 ADD 100 6     # Get user instruction count address
+78 CPYI 521 100  # Save current time slice counter to thread
+79 ADD 4 1       # Increment thread ID
+80 CPYI 4 100    # Get updated thread ID
+81 CPYI 100 101  # Copy to another register for comparison
+82 ADDI 101 -2   # Subtract max thread ID
+83 JIF 101 85    # If greater than max ID, reset to 1
+84 SET 1 4       # (Old line 40) Reset to thread 1
+85 CPYI 4 100    # Get the new current thread ID
+86 ADD 100 100   # Multiply by 4 to get offset
+87 ADD 100 100   # Multiply by 4 to get offset
+88 ADD 100 100   # Multiply by 4 to get offset
+89 ADDI 504 100  # Add base address to get thread table entry
+90 ADD 100 1     # Add 1 to get state field
+91 SET 1 100     # Set new thread to running
+92 ADD 100 6     # Get user instruction count address
+93 CPYI 100 521  # Load user instruction count
+94 ADDI 521 -522 # Subtract kernel overhead
+95 JIF 521 0     # Ensure non-negative
+96 SET 0 521     # If negative, set to 0
+97 SET 0 521     # Reset time slice counter
+98 SET 24 0      # Return to user-mode transition
+
+# System call handler (called when user thread executes SYSCALL)
+60 CPYI 4 100    # Get current thread ID
+61 ADD 100 100   # Multiply by 4 to get offset
+62 ADD 100 100   # Multiply by 4 to get offset
+63 ADD 100 100   # Multiply by 4 to get offset
+64 ADDI 504 100  # Add base address to get thread entry
+65 ADD 100 1     # Add 1 to get SP address
+66 CPYI 1 100    # Save updated SP to thread SP
+67 SET 20 0      # Return to scheduler
+
+
+# Thread 1 code (address 1000)
+1000 ADD 1000 1    # Increment counter 1
+1001 SYSCALL PRN 1000 # Print counter 1 value
+1002 JIF 1000 1004 # If counter value <= 0, jump to end (should never happen)
+1003 JIF 1500 1000     # Loop back
+
+# End of thread 1
+1004 HLT          # Halt the program
+
+# Thread 2 code (address 1200)
+1200 ADD 1200 1    # Increment counter 2
+1201 SYSCALL PRN 1200 # Print counter 2 value
+1202 JIF 1200 1204 # If counter value <= 0, jump to end (should never happen)
+1203 JIF 1200 1200     # Loop back
+
+# End of thread 2
+1204 HLT          # Halt the program
+End Instruction Section

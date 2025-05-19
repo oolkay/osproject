@@ -1,0 +1,263 @@
+# GTU-C312 Simple Operating System
+# Implements cooperative multitasking with round-robin scheduling
+
+Begin Data Section
+# System registers
+0 0       # PC - Program Counter
+1 100     # SP - Stack Pointer
+2 0       # Syscall result
+3 0       # Instruction count
+
+# OS Thread Table - max 10 threads
+# Thread 0 (OS itself)
+500 0     # Thread 0 ID (OS)
+501 1     # Thread 0 state (0=ready, 1=running, 2=blocked, 3=halted)
+502 0     # Thread 0 start time
+503 0     # Thread 0 execution time 
+504 0     # Thread 0 PC
+505 100   # Thread 0 SP
+
+# Thread 1
+510 1     # Thread 1 ID
+511 0     # Thread 1 state (initially ready)
+512 0     # Thread 1 start time
+513 0     # Thread 1 execution time
+514 1000  # Thread 1 PC (starts at address 1000)
+515 1100  # Thread 1 SP (stack at 1100)
+
+# Thread 2
+520 2     # Thread 2 ID
+521 0     # Thread 2 state
+522 0     # Thread 2 start time
+523 0     # Thread 2 execution time
+524 2000  # Thread 2 PC (starts at address 2000)
+525 2100  # Thread 2 SP (stack at 2100)
+
+# Thread 3
+530 3     # Thread 3 ID
+531 0     # Thread 3 state
+532 0     # Thread 3 start time
+533 0     # Thread 3 execution time
+534 3000  # Thread 3 PC (starts at address 3000)
+535 3100  # Thread 3 SP (stack at 3100)
+
+# OS Variables
+600 0     # Current running thread ID
+601 0     # Number of active threads (initialized to 0)
+602 0     # Current thread index for scheduling
+603 0     # Temp variable for calculations
+604 0     # Temp variable for PC
+605 0     # Temp variable for SP
+606 100   # Quantum timer
+
+# Thread 1 - Program 1 (simple counter)
+# This program counts from 1 to 5 and yields between each increment
+1000 SET 0 1010     # Initialize counter to 0
+1001 ADDI 1010 1    # Increment counter
+1002 SYSCALL PRN 1010  # Print counter value
+1003 CPY 1010 1011  # Copy counter to compare register
+1004 ADDI 1011 -5   # Subtract 5 to check if we reached limit
+1005 JIF 1011 1008  # If counter >= 5, jump to end
+1006 SYSCALL YIELD  # Yield to other threads
+1007 SET 1001 0     # Jump back to increment
+1008 SYSCALL HLT    # Halt this thread
+
+# Thread 2 - Program 2 (prints even numbers)
+# This program prints even numbers from 2 to 10
+2000 SET 0 2010     # Initialize counter to 0
+2001 ADDI 2010 2    # Add 2 to counter (make it even)
+2002 SYSCALL PRN 2010  # Print counter value
+2003 CPY 2010 2011  # Copy counter to compare register
+2004 ADDI 2011 -10  # Subtract 10 to check if we reached limit
+2005 JIF 2011 2008  # If counter >= 10, jump to end
+2006 SYSCALL YIELD  # Yield to other threads
+2007 SET 2001 0     # Jump back to increment
+2008 SYSCALL HLT    # Halt this thread
+
+# Thread 3 - Program 3 (prints odd numbers)
+# This program prints odd numbers from 1 to 9
+3000 SET 1 3010     # Initialize counter to 1 (odd)
+3001 SYSCALL PRN 3010  # Print counter value
+3002 ADDI 3010 2    # Add 2 to counter (keep it odd)
+3003 CPY 3010 3011  # Copy counter to compare register
+3004 ADDI 3011 -9   # Subtract 9 to check if we reached limit
+3005 JIF 3011 3008  # If counter >= 9, jump to end
+3006 SYSCALL YIELD  # Yield to other threads
+3007 SET 3001 0     # Jump back to print
+3008 SYSCALL HLT    # Halt this thread
+End Data Section
+
+Begin Instruction Section
+# OS Boot Sequence
+0 SET 3 601       # Set number of active threads to 3
+1 SET 1 600       # Set current thread to 1 (first user thread)
+2 SET 0 602       # Initialize current thread index
+
+# Jump to scheduler
+3 SET 100 0       # Jump to scheduler routine
+4 HLT             # Should never reach here
+
+# Scheduler routine (address 100)
+100 CPY 601 603   # Copy number of active threads to temp
+101 JIF 603 400   # If no active threads, shut down OS
+
+# Find next ready thread
+105 ADDI 602 1    # Increment current thread index
+106 CPY 602 603   # Copy to temp for comparison
+107 CPY 601 604   # Get number of active threads
+108 ADDI 604 1    # Add 1 (thread IDs start from 1, max = num_threads)
+109 SUB 603 604   # Check if we exceeded max thread ID
+110 JIF 603 111   # If so, reset to thread 1
+111 SET 1 602     # Reset to thread 1
+
+# Calculate thread state address: 500 + (thread_id * 10) + 1
+115 CPY 602 603   # Copy thread ID to temp
+116 ADDI 603 -1   # Subtract 1 to get 0-based index
+117 ADD 603 603   # Multiply by 2 (x2)
+118 ADD 603 603   # Multiply by 2 again (x4)
+119 ADD 603 603   # Multiply by 2 again (x8)
+120 ADD 603 10    # Add 10 to get thread entry offset
+121 ADDI 603 501  # Add base address to get state address
+122 CPY 603 604   # Store state address in temp
+
+# Check thread state
+125 ADDI 604 0    # Get thread state address
+126 CPY 604 603   # Get thread state value
+127 ADDI 603 -3   # Check if halted (state = 3)
+128 JIF 603 105   # If halted, look for next thread
+129 ADDI 603 1    # Restore actual value minus 2
+130 ADDI 603 -2   # Check if blocked (state = 2)
+131 JIF 603 150   # If not blocked, go to blocked handler
+132 JIF 603 105   # If still blocked, look for next thread
+
+# Thread is ready (state = 0)
+150 CPY 602 603   # Get thread ID
+151 CPY 603 600   # Set as current running thread
+
+# Calculate thread PC address: 500 + (thread_id * 10) + 4
+155 CPY 602 603   # Copy thread ID to temp
+156 ADDI 603 -1   # Subtract 1 to get 0-based index
+157 ADD 603 603   # Multiply by 2 (x2)
+158 ADD 603 603   # Multiply by 2 again (x4)
+159 ADD 603 603   # Multiply by 2 again (x8)
+160 ADD 603 10    # Add 10 to get thread entry offset
+161 ADDI 603 504  # Add base address to get PC address
+162 CPY 603 604   # Store PC address in temp
+
+# Update thread state to running
+165 ADDI 604 -3   # Get state address
+166 SET 1 604     # Set state to running
+
+# Get thread PC and SP
+170 ADDI 604 3    # Get PC address
+171 CPY 604 0     # Load thread PC into system PC
+172 ADDI 604 1    # Get SP address
+173 CPY 604 1     # Load thread SP into system SP
+
+# Switch to user mode and execute thread
+175 USER          # Switch to user mode
+176 HLT           # Should never reach here
+
+# Save thread context on YIELD/SYSCALL (address 200)
+# This is called when a thread yields or makes a system call
+200 CPY 0 603     # Save PC to temp
+201 ADDI 603 1    # Increment PC to point to next instruction
+
+# Calculate thread PC address: 500 + (thread_id * 10) + 4
+205 CPY 600 604   # Copy current thread ID to temp
+206 ADDI 604 -1   # Subtract 1 to get 0-based index
+207 ADD 604 604   # Multiply by 2 (x2)
+208 ADD 604 604   # Multiply by 2 again (x4)
+209 ADD 604 604   # Multiply by 2 again (x8)
+210 ADD 604 10    # Add 10 to get thread entry offset
+211 ADDI 604 504  # Add base address to get PC address
+212 CPY 604 605   # Store PC address in temp
+
+# Save thread PC and SP
+215 CPY 603 605   # Save next PC value
+216 ADDI 605 1    # Get SP address
+217 CPY 1 605     # Save SP value
+
+# Set thread state to ready
+220 ADDI 605 -4   # Get state address
+221 SET 0 605     # Set thread state to ready
+
+# Go to scheduler
+225 SET 100 0     # Jump to scheduler
+226 HLT           # Should never reach here
+
+# Handle blocked threads (checking if they can be unblocked)
+300 CPY 602 603   # Get thread ID
+
+# Calculate thread block time
+305 CPY 602 604   # Copy thread ID to temp
+306 ADDI 604 -1   # Subtract 1 to get 0-based index
+307 ADD 604 604   # Multiply by 2 (x2)
+308 ADD 604 604   # Multiply by 2 again (x4)
+309 ADD 604 604   # Multiply by 2 again (x8)
+310 ADD 604 10    # Add 10 to get thread entry offset
+311 ADDI 604 550  # Add base address to get block time address
+312 CPY 604 605   # Get block time
+
+# Check if block time has expired
+315 CPY 3 603     # Get current instruction count
+316 SUB 603 605   # Subtract block time
+317 ADDI 603 -100 # Check if 100 instructions have passed
+318 JIF 603 325   # If >= 100, unblock the thread
+319 SET 105 0     # Otherwise, go back to scheduler
+320 HLT           # Should never reach here
+
+# Unblock thread
+325 ADDI 604 -49  # Get state address (550-49=501)
+326 SET 0 604     # Set state to ready
+327 SET 105 0     # Go back to scheduler
+328 HLT           # Should never reach here
+
+# PRN system call handler (address 350)
+# PRN blocks the thread for 100 instructions
+350 CPY 600 603   # Get current thread ID
+
+# Calculate thread block time address
+355 CPY 603 604   # Copy thread ID to temp
+356 ADDI 604 -1   # Subtract 1 to get 0-based index
+357 ADD 604 604   # Multiply by 2 (x2)
+358 ADD 604 604   # Multiply by 2 again (x4)
+359 ADD 604 604   # Multiply by 2 again (x8)
+360 ADD 604 10    # Add 10 to get thread entry offset
+361 ADDI 604 550  # Add base address to get block time address
+362 CPY 3 605     # Get current instruction count
+363 CPY 605 604   # Save current time as block start time
+
+# Set thread state to blocked
+365 ADDI 604 -49  # Get state address (550-49=501)
+366 SET 2 604     # Set state to blocked
+
+# Go to scheduler
+370 SET 100 0     # Jump to scheduler
+371 HLT           # Should never reach here
+
+# HLT system call handler (address 380)
+# Marks the thread as halted
+380 CPY 600 603   # Get current thread ID
+
+# Calculate thread state address
+385 CPY 603 604   # Copy thread ID to temp
+386 ADDI 604 -1   # Subtract 1 to get 0-based index
+387 ADD 604 604   # Multiply by 2 (x2)
+388 ADD 604 604   # Multiply by 2 again (x4)
+389 ADD 604 604   # Multiply by 2 again (x8)
+390 ADD 604 10    # Add 10 to get thread entry offset
+391 ADDI 604 501  # Add base address to get state address
+392 SET 3 604     # Set state to halted
+
+# Decrement active thread count
+395 ADDI 601 -1   # Decrease active thread count
+
+# Go to scheduler
+396 SET 100 0     # Jump to scheduler
+397 HLT           # Should never reach here
+
+# OS shutdown (address 400)
+# This is called when all threads are halted
+400 HLT           # Halt the OS
+End Instruction Section

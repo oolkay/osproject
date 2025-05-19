@@ -1,0 +1,29 @@
+# User/Kernel Mode Test
+
+Begin Data Section
+# System registers
+0 0   # PC
+1 100 # SP
+2 0   # Syscall result
+3 0   # Instruction count
+
+# Variables
+50 999    # Valid memory in kernel mode
+999 42    # Last address in kernel space
+1000 123  # First address in user space
+End Data Section
+
+Begin Instruction Section
+# Start in kernel mode (default)
+0 SYSCALL PRN 50     # Should succeed - printing valid memory in kernel mode
+1 SYSCALL PRN 999    # Should succeed - printing last kernel address
+2 SYSCALL PRN 1000   # Should succeed - printing first user address
+
+# Switch to user mode
+3 USER                # Switch to user mode
+
+# Access tests in user mode
+4 SYSCALL PRN 1000   # Should succeed - printing valid user space memory
+5 SYSCALL PRN 999    # Should fail - trying to print kernel space memory
+6 HLT                # Halt program
+End Instruction Section

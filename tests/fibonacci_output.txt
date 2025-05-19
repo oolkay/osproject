@@ -1,0 +1,41 @@
+Loading program from fibonacci.txt...
+Executing program...
+PRN: 0
+PRN: 0
+PRN: 0
+Executed 10 instructions
+PRN: 0
+PRN: 0
+PRN: 0
+Executed 20 instructions
+PRN: 0
+PRN: 0
+Executed 30 instructions
+PRN: 0
+PRN: 0
+PRN: 0
+Executed 40 instructions
+PRN: 0
+PRN: 0
+Executed 50 instructions
+PRN: 0
+PRN: 0
+PRN: 0
+Executed 60 instructions
+PRN: 0
+PRN: 0
+Executed 70 instructions
+PRN: 0
+PRN: 0
+PRN: 0
+Executed 80 instructions
+PRN: 0
+PRN: 0
+Executed 90 instructions
+PRN: 0
+PRN: 0
+PRN: 0
+Executed 100 instructions
+Maximum instruction limit reached, stopping execution
+Program halted. Total instructions executed: 201
+Final result (sum) is: 0

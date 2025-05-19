@@ -1,0 +1,21 @@
+# Simple Counter Program
+
+Begin Data Section
+# System Registers
+0 0   # PC - Program Counter
+1 100 # SP - Stack Pointer with a safe initial value
+2 0   # Syscall result
+3 0   # Instruction count
+
+# Application Variables
+50 0  # Counter value
+End Data Section
+
+Begin Instruction Section
+# Increment counter
+0 ADD 50 1   # Add 1 to memory[50]
+1 SYSCALL PRN 50  # Print counter value
+2 ADD 50 1   # Add 1 to memory[50]
+3 SYSCALL PRN 50  # Print counter value  
+4 HLT            # Halt
+End Instruction Section

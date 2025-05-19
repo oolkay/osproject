@@ -1,0 +1,102 @@
+#   GTU-C312 INSTRUCTION SET
+#   The numbers in the below instruction sets are signed long intergers, which means that ADD 300 -1
+#   can be used as an instruction to decrement the memory location 300 value by 1.
+#   The parameters for the instructions can be memory locations (A, A1, A2), unsigned long numbers
+#   (B), or instruction numbers (C).
+#   GTU-C312 does not have any registers, instead it uses special memory locations as registers shown
+#   below
+#   mem loc.    Register
+#   0           Program counter
+#   1           Stack Pointer
+#   2           System call result
+#   3           Number of instructions executed so far
+#   3-20        Reserved for other uses
+
+
+#   Your whole OS + program file formats will include two sections: one section for the data, one
+#   section for the program instructions.
+#   One example program without the OS is given below, it adds number from 1 to 10 and puts the
+#   result in address 51.
+#   #Program sample
+#   Begin Data Section
+#   0 0 #program counter
+#   1 0 # stack pointer
+#   2 0
+#   3 0
+#   4 0
+#   5 0
+#   ...
+#   255 0
+#   End Data Section
+#   Begin Instruction Section
+#   0 SET 10 50 # i = 10
+#   1 SET 0 51 # sum = 0
+#   2 ADDI 50 51 # sum = sum + i
+#   3 ADD 50 -1 # i = i – 1
+#   4 JIF 50 7 # Go to 6 if i <= 0
+#   5 SYSCALL PRN 51 # print the sum so far
+#   6 SET 2 0 # Go to 2 – remember address 0 is the program counter
+#   7 HLT # end of program, the result is in memory address 51 (sum)
+#   End Instruction Section
+
+#   The data and the instruction section can be as large as needed. You can have comments after the #
+#   charater in any line.
+#   When your simulated computer starts running, your BIOS will first read a file. One example is
+#   above. BIOS will read both data segment and instruction segment, then it will start executing
+#   starting from the PC which is stored in address zero. If the file is only a single program like above,
+#   it will be executed. If the file contains OS and other threads, then everything will be controlled by
+#   the OS. In other words, the program you are reading is your OS and your threads.
+#   Then it will run a loop similar to
+#   while (!myCpu.isHalted())
+#   myCpu.execute();
+#   The CPU function execute will take just one instruction at the Program Counter (PC), execute it,
+#   then increment the PC (if no jump), increment register number 3 (number of instructions executed).
+#   This loop ends when the CPU is halted. Your CPU is in the kernel mode when it starts, before you
+#   start running threads, do not forget to execute USER instruction. Of course, when a system call is
+#   made, the CPU will be automatically in the kernel mode. In KERNEL mode, your CPU can access
+#   anywhere in the memory, in USER mode, it can access only the address 1000 and above. If in the
+#   USER mode your instruction accesses in the first 1000 addresses, then that thread is shutdown.
+
+
+SET     B   A       Direct Set : Set the Ath memory location with number B.
+                    Example: SET -20, 100 writes the value of -20 to memory location 100.
+
+CPY     A1  A2      Direct Copy: Copy the content of memory location A1 to memory A2.
+                    Example: CPY 100, 120 copies the memory value of address 100 to the
+                    memory address 120
+
+CPYI    A1  A2      Indirect Copy: Copy the memory address indexed by A1 to memory
+                    address A2. Example: CPYI 100, 102: if memory address 100 contains
+                    200, then this instruction copies the contents of memory address 200 to
+                    memory location 120.
+
+ADD     A   B       Add number B to memory location A
+
+ADDI    A1  A2      Indirect Add: Add the contents of memory address A2 to address A1.
+
+SUBI    A1  A2      Indirect Subtraction: Subtract the contents of memory address A2 from
+                    address A1, put the result in A2
+
+JIF     A   C       Set the CPU program counter with C if memory location A content is less
+                    than or equal to 0
+
+PUSH    A           Push memory A onto the stack. Stack grows downwards.
+
+POP     A           Pop value from stack into memory A.
+
+CALL    C           Call subroutine at instruction C, push return address.
+
+RET                 Return from subroutine by popping return address.
+
+HLT                 Halts the CPU
+
+USER                Switch to user mode
+
+SYSCALL PRN A       Calls the operting system service. This system call prints the contents of
+                    memory address A to the console followed by a new line character. This
+                    system call will block the calling thread for 100 instruction executions.
+
+SYSCALL HLT         Calls the operting system service. Shuts down the thread
+
+SYSCALL YIELD       Calls the operting system service. Yields the CPU so OS can schedule
+                    other threads.
